@@ -77,6 +77,7 @@ import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.tool.schema.internal.StandardSequenceExporter;
 import org.hibernate.tool.schema.internal.StandardTableExporter;
 import org.hibernate.tool.schema.spi.Exporter;
+import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
@@ -285,7 +286,6 @@ public class SQLServerDialect extends AbstractTransactSQLDialect {
 		ddlTypeRegistry.addDescriptor( new DdlTypeImpl( GEOGRAPHY, "geography", this ) );
 		ddlTypeRegistry.addDescriptor( new DdlTypeImpl( SQLXML, "xml", this ) );
 		ddlTypeRegistry.addDescriptor( new DdlTypeImpl( UUID, "uniqueidentifier", this ) );
-		ddlTypeRegistry.addDescriptor( new DdlTypeImpl( JSON, "nvarchar(max)", this ) );
 	}
 
 	@Override
@@ -1275,4 +1275,10 @@ public class SQLServerDialect extends AbstractTransactSQLDialect {
 		return false;
 	}
 
+	@Override
+	public boolean equivalentTypes(int typeCode1, int typeCode2) {
+		return typeCode1 == Types.NVARCHAR && typeCode2 == SqlTypes.JSON
+			|| typeCode1 == SqlTypes.JSON && typeCode2 == Types.NVARCHAR
+			|| super.equivalentTypes( typeCode1, typeCode2 );
+	}
 }
