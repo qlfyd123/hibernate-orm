@@ -77,7 +77,6 @@ import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.tool.schema.internal.StandardSequenceExporter;
 import org.hibernate.tool.schema.internal.StandardTableExporter;
 import org.hibernate.tool.schema.spi.Exporter;
-import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
@@ -113,7 +112,6 @@ import static org.hibernate.type.SqlTypes.DATE;
 import static org.hibernate.type.SqlTypes.DOUBLE;
 import static org.hibernate.type.SqlTypes.GEOGRAPHY;
 import static org.hibernate.type.SqlTypes.GEOMETRY;
-import static org.hibernate.type.SqlTypes.JSON;
 import static org.hibernate.type.SqlTypes.LONG32NVARCHAR;
 import static org.hibernate.type.SqlTypes.LONG32VARBINARY;
 import static org.hibernate.type.SqlTypes.LONG32VARCHAR;
@@ -1275,12 +1273,5 @@ public class SQLServerDialect extends AbstractTransactSQLDialect {
 	@Override
 	public boolean supportsRowValueConstructorSyntaxInInList() {
 		return false;
-	}
-
-	@Override
-	public boolean equivalentTypes(int typeCode1, int typeCode2) {
-		return typeCode1 == Types.NVARCHAR && typeCode2 == SqlTypes.JSON
-			|| typeCode1 == SqlTypes.JSON && typeCode2 == Types.NVARCHAR
-			|| super.equivalentTypes( typeCode1, typeCode2 );
 	}
 }
