@@ -4,6 +4,9 @@
  */
 package org.hibernate.orm.test.schemavalidation;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.dialect.SQLServerDialect;
 import org.hibernate.testing.jdbc.JdbcUtils;
@@ -19,13 +22,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
-@JiraKey( "HHH-20092" )
+@JiraKey("HHH-20092")
 @RequiresDialect(SQLServerDialect.class)
-@ServiceRegistry
+@ServiceRegistry(
+		settings = @org.hibernate.testing.orm.junit.Setting(
+				name = "hibernate.use_nationalized_character_data",
+				value = "true"
+		)
+)
 public class SQLServerJsonValidationTest {
 
 	@BeforeEach
