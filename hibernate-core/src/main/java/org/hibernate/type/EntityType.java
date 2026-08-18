@@ -295,6 +295,25 @@ public abstract class EntityType extends AbstractType implements AssociationType
 			SharedSessionContractImplementor session,
 			Object owner,
 			Map<Object, Object> copyCache) throws HibernateException {
+		return replace( original, target, session, owner, copyCache, false );
+	}
+
+	Object replaceForCollection(
+			Object original,
+			Object target,
+			SharedSessionContractImplementor session,
+			Object owner,
+			Map<Object, Object> copyCache) throws HibernateException {
+		return replace( original, target, session, owner, copyCache, true );
+	}
+
+	private Object replace(
+			Object original,
+			Object target,
+			SharedSessionContractImplementor session,
+			Object owner,
+			Map<Object, Object> copyCache,
+			boolean nullable) throws HibernateException {
 		if ( original == null ) {
 			return null;
 		}
@@ -331,9 +350,25 @@ public abstract class EntityType extends AbstractType implements AssociationType
 				final Object replaced =
 						getIdentifierOrUniqueKeyType( session.getFactory().getRuntimeMetamodels() )
 								.replace( id, null, session, owner, copyCache );
-				return resolve( replaced, session, owner );
+				return nullable
+						? resolveNullable( replaced, session, owner )
+						: resolve( replaced, session, owner );
 			}
 		}
+	}
+
+	private Object resolveNullable(Object value, SharedSessionContractImplementor session, Object owner) {
+		// Only the collection-specific replacement path reaches this method. A missing row is represented by
+		// null and is converted by CollectionType into its internal missing-element marker.
+		if ( value != null && !isNull( owner, session ) ) {
+			if ( isReferenceToPrimaryKey() ) {
+				return resolveIdentifier( value, session, true );
+			}
+			else if ( uniqueKeyPropertyName != null ) {
+				return loadByUniqueKey( getAssociatedEntityName(), uniqueKeyPropertyName, value, session );
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -663,9 +698,16 @@ public abstract class EntityType extends AbstractType implements AssociationType
 	 */
 	protected final Object resolveIdentifier(Object id, SharedSessionContractImplementor session)
 			throws HibernateException {
+		return resolveIdentifier( id, session, isNullable() );
+	}
+
+	private Object resolveIdentifier(
+			Object id,
+			SharedSessionContractImplementor session,
+			boolean nullable) throws HibernateException {
 		// If the association is lazy, retrieve the concrete type if required
 		final String entityName = associatedEntityName( id, session );
-		final Object proxyOrEntity = session.internalLoad( entityName, id, eager, isNullable() );
+		final Object proxyOrEntity = session.internalLoad( entityName, id, eager, nullable );
 		final var lazyInitializer = extractLazyInitializer( proxyOrEntity );
 		if ( lazyInitializer != null ) {
 			final boolean isProxyUnwrapEnabled =

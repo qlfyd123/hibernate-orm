@@ -74,8 +74,13 @@ public class MapType extends CollectionType {
 
 		for ( var entry : source.entrySet() ) {
 			final Object key = persister.getIndexType().replace( entry.getKey(), null, session, owner, copyCache );
-			final Object value = persister.getElementType().replace( entry.getValue(), null, session, owner, copyCache );
-			result.put( key, value );
+			// Map keys retain their existing strict replacement semantics; only a missing entity value causes
+			// the entry to be omitted from the merged map.
+			final Object value = replaceElement(
+					persister.getElementType(), entry.getValue(), null, session, owner, copyCache );
+			if ( !isMissingEntity( value ) ) {
+				result.put( key, value );
+			}
 		}
 
 		if ( target instanceof PersistentCollection<?> targetPersistentCollection

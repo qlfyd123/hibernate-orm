@@ -47,6 +47,8 @@ import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
  * @author Gavin King
  */
 public abstract class CollectionType extends AbstractType implements AssociationType {
+	// sentinel object used to distinguish entities no longer existing in the database from null collection elements.
+	private static final Object MISSING_ENTITY = new Object();
 
 	private final String role;
 	private final String foreignKeyPropertyName;
@@ -477,7 +479,10 @@ public abstract class CollectionType extends AbstractType implements Association
 		// copy elements into newly empty target collection
 		final Type elemType = getElementType( session.getFactory() );
 		for ( Object element : (Collection<?>) original ) {
-			result.add( elemType.replace( element, null, session, owner, copyCache ) );
+			final Object replacement = replaceElement( elemType, element, null, session, owner, copyCache );
+			if ( !isMissingEntity( replacement ) ) {
+				result.add( replacement );
+			}
 		}
 
 		// if the original is a PersistentCollection, and that original
@@ -580,7 +585,11 @@ public abstract class CollectionType extends AbstractType implements Association
 			final K key = entry.getKey();
 			final V value = entry.getValue();
 			final Object resultSnapshotValue = resultSnapshot == null ? null : resultSnapshot.get( key );
-			final Object newValue = elemType.replace( value, resultSnapshotValue, session, owner, copyCache );
+			final Object newValue = replaceElement(
+					elemType, value, resultSnapshotValue, session, owner, copyCache );
+			if ( isMissingEntity( newValue ) ) {
+				continue;
+			}
 			//noinspection unchecked
 			targetMap.put( key == value ? (K) newValue : key, (V) newValue );
 		}
@@ -595,9 +604,34 @@ public abstract class CollectionType extends AbstractType implements Association
 			SharedSessionContractImplementor session) {
 		final ArrayList<Object> targetList = new ArrayList<>( list.size() );
 		for ( Object obj : list ) {
-			targetList.add( elemType.replace( obj, null, session, owner, copyCache ) );
+			final Object replacement = replaceElement( elemType, obj, null, session, owner, copyCache );
+			if ( !isMissingEntity( replacement ) ) {
+				targetList.add( replacement );
+			}
 		}
 		return targetList;
+	}
+
+	static Object replaceElement(
+			Type elementType,
+			Object original,
+			Object target,
+			SharedSessionContractImplementor session,
+			Object owner,
+			Map<Object, Object> copyCache) {
+		// Bulk mutations may leave an initialized detached collection referring to an entity that no longer exists.
+		// Resolve direct entity elements leniently in this collection-specific path so that the stale
+		// element can be omitted without changing the strict replacement semantics of ordinary associations.
+		if ( original != null && elementType instanceof EntityType entityType ) {
+			final Object replacement = entityType.replaceForCollection(
+					original, target, session, owner, copyCache );
+			return replacement == null ? MISSING_ENTITY : replacement;
+		}
+		return elementType.replace( original, target, session, owner, copyCache );
+	}
+
+	static boolean isMissingEntity(Object replacement) {
+		return replacement == MISSING_ENTITY;
 	}
 
 	/**
